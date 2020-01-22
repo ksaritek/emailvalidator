@@ -1,6 +1,7 @@
 package register
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/go-playground/validator/v10"
 	"net"
@@ -24,11 +25,11 @@ func NewDomainValidator() *domainValidator {
 		return true
 	})
 	return &domainValidator{
-		Validator:v,
+		Validator: v,
 	}
 }
 
-func (d *domainValidator)Validate(p string) error {
+func (d *domainValidator) Validate(ctx context.Context, p string) error {
 	type emailRequest struct {
 		Email string `json:"email" validate:"domain"`
 	}
@@ -38,5 +39,5 @@ func (d *domainValidator)Validate(p string) error {
 		return err
 	}
 
-	return d.Validator.Struct(&e)
+	return d.Validator.StructCtx(ctx, &e)
 }

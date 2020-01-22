@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	p := fmt.Sprintf(":%s",os.Getenv("PORT"))
+	p := fmt.Sprintf(":%s", os.Getenv("PORT"))
 	if p == ":" {
 		p = ":8080"
 		log.Printf("fallback to default port %s\n", p)

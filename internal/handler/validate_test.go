@@ -15,34 +15,40 @@ import (
 
 func Test_EmailValidation(t *testing.T) {
 	tests := []struct {
-		name  string
-		email string
-		want  string
+		name       string
+		email      string
+		want       string
+		statusCode int
 	}{
 		{
-			name: `valid email`,
-			email: `{"email":"xxx@gmail.com"}`,
-			want: `{"valid":true,"validators":{"regexp":{"valid":true},"domain":{"valid":true},"smtp":{"valid":true}}}`,
+			name:       `valid email`,
+			email:      `{"email":"xxx@gmail.com"}`,
+			want:       `{"valid":true,"validators":{"regexp":{"valid":true},"domain":{"valid":true},"smtp":{"valid":true}}}`,
+			statusCode: http.StatusOK,
 		},
 		{
-			name: `invalid domain & smtp connect failure`,
-			email: `{"email":"xxx@zhuu.zu"}`,
-			want: `{"valid":false,"validators":{"regexp":{"valid":true},"domain":{"valid":false,"reason":"INVALID_TLD"},"smtp":{"valid":false,"reason":"UNABLE_TO_CONNECT"}}}`,
+			name:       `invalid domain & smtp connect failure`,
+			email:      `{"email":"xxx@zhuu.zu"}`,
+			want:       `{"valid":false,"validators":{"regexp":{"valid":true},"domain":{"valid":false,"reason":"INVALID_TLD"},"smtp":{"valid":false,"reason":"UNABLE_TO_CONNECT"}}}`,
+			statusCode: http.StatusOK,
 		},
 		{
-			name: `smtp connect failure`,
-			email: `{"email":"xxx@facebook.com"}`,
-			want: `{"valid":false,"validators":{"regexp":{"valid":true},"domain":{"valid":true},"smtp":{"valid":false,"reason":"UNABLE_TO_CONNECT"}}}`,
+			name:       `invalid regexp`,
+			email:      `{"email":"£££testinvalid@gmail.com"}`,
+			want:       `{"valid":false,"validators":{"regexp":{"valid":false,"reason":"INVALID_EMAIL"},"domain":{"valid":true},"smtp":{"valid":true}}}`,
+			statusCode: http.StatusOK,
 		},
 		{
-			name: `invalid regexp`,
-			email: `{"email":"£££testinvalid@gmail.com"}`,
-			want: `{"valid":false,"validators":{"regexp":{"valid":false,"reason":"INVALID_EMAIL"},"domain":{"valid":true},"smtp":{"valid":true}}}`,
+			name:       `invalid regexp & domain & smtp connect failure`,
+			email:      `{"email":"£££testinvalid@zhuuu.zu"}`,
+			want:       `{"valid":false,"validators":{"regexp":{"valid":false,"reason":"INVALID_EMAIL"},"domain":{"valid":false,"reason":"INVALID_TLD"},"smtp":{"valid":false,"reason":"UNABLE_TO_CONNECT"}}}`,
+			statusCode: http.StatusOK,
 		},
 		{
-			name: `invalid regexp & domain & smtp connect failure`,
-			email: `{"email":"£££testinvalid@zhuuu.zu"}`,
-			want: `{"valid":false,"validators":{"regexp":{"valid":false,"reason":"INVALID_EMAIL"},"domain":{"valid":false,"reason":"INVALID_TLD"},"smtp":{"valid":false,"reason":"UNABLE_TO_CONNECT"}}}`,
+			name:       `invalid payload`,
+			email:      `{"invalidp":"£££testinvalid@zhuuu.zu"}`,
+			want:       "",
+			statusCode: http.StatusBadRequest,
 		},
 	}
 
@@ -54,6 +60,10 @@ func Test_EmailValidation(t *testing.T) {
 			res, err := http.Post(fmt.Sprintf("%s/email/validate", ts.URL), "application/json", strings.NewReader(tt.email))
 			if err != nil {
 				log.Fatal(err)
+			}
+
+			if res.StatusCode == http.StatusBadRequest && res.StatusCode == tt.statusCode {
+				return
 			}
 
 			var got domain.Validation

@@ -1,6 +1,7 @@
 package register
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/go-playground/validator/v10"
 	"regexp"
@@ -22,11 +23,11 @@ func NewRegexpValidator() *regexpValidator {
 		return true
 	})
 	return &regexpValidator{
-		Validator:v,
+		Validator: v,
 	}
 }
 
-func (d *regexpValidator)Validate(p string) error {
+func (d *regexpValidator) Validate(ctx context.Context, p string) error {
 	type emailRequest struct {
 		Email string `json:"email" validate:"regexp"`
 	}
@@ -36,5 +37,5 @@ func (d *regexpValidator)Validate(p string) error {
 		return err
 	}
 
-	return d.Validator.Struct(&e)
+	return d.Validator.StructCtx(ctx, &e)
 }

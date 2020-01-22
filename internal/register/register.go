@@ -1,6 +1,7 @@
 package register
 
 import (
+	"context"
 	"net"
 	"net/smtp"
 	"strings"
@@ -8,7 +9,7 @@ import (
 )
 
 type Validator interface {
-	Validate(p string)error
+	Validate(ctx context.Context, p string) error
 }
 
 func split(email string) (account, host string) {

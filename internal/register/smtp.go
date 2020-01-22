@@ -1,6 +1,7 @@
 package register
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/go-playground/validator/v10"
@@ -8,7 +9,6 @@ import (
 	"strings"
 	"time"
 )
-
 
 type smtpValidator struct {
 	Validator *validator.Validate
@@ -41,11 +41,11 @@ func NewSmtpValidator() *smtpValidator {
 	})
 
 	return &smtpValidator{
-		Validator:v,
+		Validator: v,
 	}
 }
 
-func (d *smtpValidator)Validate(p string) error {
+func (d *smtpValidator) Validate(ctx context.Context, p string) error {
 	type emailRequest struct {
 		Email string `json:"email" validate:"smtp"`
 	}
@@ -55,5 +55,5 @@ func (d *smtpValidator)Validate(p string) error {
 		return err
 	}
 
-	return d.Validator.Struct(&e)
+	return d.Validator.StructCtx(ctx, &e)
 }

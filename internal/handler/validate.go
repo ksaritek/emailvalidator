@@ -9,28 +9,29 @@ import (
 	"net/http"
 )
 
-type emailRequest struct {
-	Email string `json:"email" validate:"required,regexp,domain,smtp"`
-}
-
 func NewValidationHandler() http.Handler {
 	d := register.NewDomainValidator()
 	rexp := register.NewRegexpValidator()
-	req := register.NewRequireValidator()
 	s := register.NewSmtpValidator()
 
-	return validationHandler(d, rexp, req, s)
+	return validationHandler(d, rexp, s)
 }
 
 func validationHandler(validatorList ...register.Validator) http.HandlerFunc {
+	required := register.NewRequireValidator()
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		p,_ := ioutil.ReadAll(r.Body)
+		p, _ := ioutil.ReadAll(r.Body)
+		if err := required.Validate(r.Context(), string(p)); err != nil {
+			http.Error(w, "", http.StatusBadRequest)
+			return
+		}
 
 		v := domain.Validation{Valid: true}
 		v.Validators = &domain.Validators{}
 
-		for _,validation := range validatorList{
-			if err := validation.Validate(string(p)); err != nil {
+		for _, validation := range validatorList {
+			if err := validation.Validate(r.Context(), string(p)); err != nil {
 				v.Valid = false
 
 				for _, ve := range err.(validator.ValidationErrors) {
@@ -41,13 +42,10 @@ func validationHandler(validatorList ...register.Validator) http.HandlerFunc {
 						v.Validators.Domain = &domain.DomainValidation{Status: false, Reason: "INVALID_TLD"}
 					case "smtp":
 						v.Validators.SMTP = &domain.SmtpValidation{Status: false, Reason: "UNABLE_TO_CONNECT"}
-					case "required":
-						v.Validators = nil
 					}
 				}
 			}
 		}
-
 
 		if v.Validators.Regexp == nil {
 			v.Validators.Regexp = &domain.RegexpValidation{Status: true}

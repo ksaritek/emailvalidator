@@ -1,6 +1,7 @@
 package register
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/go-playground/validator/v10"
 	"strings"
@@ -13,11 +14,11 @@ type requireValidator struct {
 func NewRequireValidator() *requireValidator {
 	v := validator.New()
 	return &requireValidator{
-		Validator:v,
+		Validator: v,
 	}
 }
 
-func (d *requireValidator)Validate(p string) error {
+func (d *requireValidator) Validate(ctx context.Context, p string) error {
 	type emailRequest struct {
 		Email string `json:"email" validate:"required"`
 	}
@@ -27,5 +28,5 @@ func (d *requireValidator)Validate(p string) error {
 		return err
 	}
 
-	return d.Validator.Struct(&e)
+	return d.Validator.StructCtx(ctx, &e)
 }
