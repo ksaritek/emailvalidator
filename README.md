@@ -25,7 +25,7 @@
 * image on dockerhub
 * should be able to run with 
 ```
-docker run -t -p 127.0.0.1:8080:8080-e PORT=8080 ksaritek/emailvalidator
+docker run -t -p 127.0.0.1:8080:8080 -e PORT=8080 ksaritek/emailvalidator
 ``` 
 
 example request:

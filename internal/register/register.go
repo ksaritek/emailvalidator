@@ -7,6 +7,10 @@ import (
 	"time"
 )
 
+type Validator interface {
+	Validate(p string)error
+}
+
 func split(email string) (account, host string) {
 	i := strings.LastIndexByte(email, '@')
 	account = email[:i]

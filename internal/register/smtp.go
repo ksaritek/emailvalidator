@@ -1,6 +1,7 @@
 package register
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/go-playground/validator/v10"
 	"net"
@@ -9,7 +10,12 @@ import (
 )
 
 
-func SMTPValidator(v *validator.Validate) {
+type smtpValidator struct {
+	Validator *validator.Validate
+}
+
+func NewSmtpValidator() *smtpValidator {
+	v := validator.New()
 	const forceDisconnectAfter = time.Second * 5
 
 	v.RegisterValidation("smtp", func(fl validator.FieldLevel) bool {
@@ -33,4 +39,21 @@ func SMTPValidator(v *validator.Validate) {
 
 		return true
 	})
+
+	return &smtpValidator{
+		Validator:v,
+	}
+}
+
+func (d *smtpValidator)Validate(p string) error {
+	type emailRequest struct {
+		Email string `json:"email" validate:"smtp"`
+	}
+
+	var e emailRequest
+	if err := json.NewDecoder(strings.NewReader(p)).Decode(&e); err != nil {
+		return err
+	}
+
+	return d.Validator.Struct(&e)
 }

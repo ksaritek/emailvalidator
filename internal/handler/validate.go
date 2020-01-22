@@ -5,6 +5,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/ksaritek/emailvalidator/internal/domain"
 	"github.com/ksaritek/emailvalidator/internal/register"
+	"io/ioutil"
 	"net/http"
 )
 
@@ -13,46 +14,51 @@ type emailRequest struct {
 }
 
 func NewValidationHandler() http.Handler {
-	validate := validator.New()
+	d := register.NewDomainValidator()
+	rexp := register.NewRegexpValidator()
+	req := register.NewRequireValidator()
+	s := register.NewSmtpValidator()
 
-	register.RegexpValidator(validate)
-	register.DomainValidator(validate)
-	register.SMTPValidator(validate)
-
-	return validationHandler(validate)
+	return validationHandler(d, rexp, req, s)
 }
 
-func validationHandler(validate *validator.Validate) http.HandlerFunc {
+func validationHandler(validatorList ...register.Validator) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var e emailRequest
-		if err := json.NewDecoder(r.Body).Decode(&e); err != nil {
-			http.Error(w, "", http.StatusBadRequest)
-			return
-		}
+		p,_ := ioutil.ReadAll(r.Body)
 
 		v := domain.Validation{Valid: true}
-		v.Validators = &domain.Validators{
-			Regexp: &domain.RegexpValidation{Status: true},
-			Domain: &domain.DomainValidation{Status: true},
-			SMTP:   &domain.SmtpValidation{Status: true},
-		}
+		v.Validators = &domain.Validators{}
 
-		err := validate.Struct(e)
-		if err != nil {
-			v.Valid = false
+		for _,validation := range validatorList{
+			if err := validation.Validate(string(p)); err != nil {
+				v.Valid = false
 
-			for _, ve := range err.(validator.ValidationErrors) {
-				switch ve.Tag() {
-				case "regexp":
-					v.Validators.Regexp = &domain.RegexpValidation{Status: false, Reason: "INVALID_EMAIL"}
-				case "domain":
-					v.Validators.Domain = &domain.DomainValidation{Status: false, Reason: "INVALID_TLD"}
-				case "smtp":
-					v.Validators.SMTP = &domain.SmtpValidation{Status: false, Reason: "UNABLE_TO_CONNECT"}
-				case "required":
-					v.Validators = nil
+				for _, ve := range err.(validator.ValidationErrors) {
+					switch ve.Tag() {
+					case "regexp":
+						v.Validators.Regexp = &domain.RegexpValidation{Status: false, Reason: "INVALID_EMAIL"}
+					case "domain":
+						v.Validators.Domain = &domain.DomainValidation{Status: false, Reason: "INVALID_TLD"}
+					case "smtp":
+						v.Validators.SMTP = &domain.SmtpValidation{Status: false, Reason: "UNABLE_TO_CONNECT"}
+					case "required":
+						v.Validators = nil
+					}
 				}
 			}
+		}
+
+
+		if v.Validators.Regexp == nil {
+			v.Validators.Regexp = &domain.RegexpValidation{Status: true}
+		}
+
+		if v.Validators.SMTP == nil {
+			v.Validators.SMTP = &domain.SmtpValidation{Status: true}
+		}
+
+		if v.Validators.Domain == nil {
+			v.Validators.Domain = &domain.DomainValidation{Status: true}
 		}
 
 		w.Header().Set("Content-Type", "application/json")
